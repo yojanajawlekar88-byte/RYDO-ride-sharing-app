@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-
   workflow_dispatch:
 
 permissions:
@@ -30,17 +29,20 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: client/package-lock.json
 
       - name: Install dependencies
+        working-directory: client
         run: npm ci
 
       - name: Build Vite application
+        working-directory: client
         run: npm run build
 
       - name: Upload build
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist
+          path: ./client/dist
 
   deploy:
     name: Deploy RYDO
@@ -52,9 +54,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Setup GitHub Pages
-        uses: actions/configure-pages@v5
-
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
