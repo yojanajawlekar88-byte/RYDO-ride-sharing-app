@@ -19,23 +19,24 @@ import {
 import { onAuthStateChanged } from "firebase/auth";
 
 /* ============================================================
-   DEMO OTP
-   ============================================================
+   RIDE OTP
+   ============================================================ */
 
-   CHANGE ONLY THIS VALUE TO CHANGE THE OTP.
+/*
+  A NEW 4-DIGIT OTP is generated for every ride.
 
-   Examples:
-   "4827"
-   "7391"
-   "5614"
-   "2048"
+  Example:
+  Ride 1 -> 5832
+  Ride 2 -> 7419
+  Ride 3 -> 2065
 
-   IMPORTANT:
-   This is a DEMO OTP.
-   No SMS is sent.
-============================================================ */
-
-const DEMO_OTP = "4827";
+  It is NOT fixed to 123456.
+*/
+const generateRideOtp = () => {
+  return Math.floor(
+    1000 + Math.random() * 9000
+  ).toString();
+};
 
 /* ============================================================
    RIDE OPTIONS
@@ -366,14 +367,17 @@ function BookRide() {
     useState("");
 
   /* ==========================================================
-     4-DIGIT DEMO OTP
+     RIDE OTP
   ========================================================== */
+
+  const [rideOtp, setRideOtp] =
+    useState("");
+
+  const [otpInput, setOtpInput] =
+    useState("");
 
   const [showOtpModal, setShowOtpModal] =
     useState(false);
-
-  const [otp, setOtp] =
-    useState("");
 
   const [otpError, setOtpError] =
     useState("");
@@ -680,7 +684,7 @@ function BookRide() {
   };
 
   /* ==========================================================
-     CLOSE OTP
+     CLOSE OTP MODAL
   ========================================================== */
 
   const closeOtpModal = () => {
@@ -689,16 +693,12 @@ function BookRide() {
     }
 
     setShowOtpModal(false);
-    setOtp("");
+    setOtpInput("");
     setOtpError("");
   };
 
   /* ==========================================================
      ACTUAL FIRESTORE BOOKING
-
-     IMPORTANT:
-     This function is called ONLY after
-     the 4-digit demo OTP has been verified.
   ========================================================== */
 
   const completeBookingAfterOtp =
@@ -775,6 +775,15 @@ function BookRide() {
           "Invalid ride fare."
         );
       }
+
+      /*
+        Make sure the OTP exists.
+        Normally it was generated in confirmBooking().
+      */
+      const bookingOtp =
+        rideOtp || generateRideOtp();
+
+      setRideOtp(bookingOtp);
 
       /* ======================================================
          WALLET PRE-CHECK
@@ -948,11 +957,22 @@ function BookRide() {
           paymentMethod ===
           "wallet",
 
+        /*
+          IMPORTANT:
+          This is the 4-digit OTP that the
+          passenger gives to the driver.
+        */
+        rideOtp:
+          bookingOtp,
+
+        otp:
+          bookingOtp,
+
         otpVerified:
           true,
 
         otpType:
-          "demo-4-digit",
+          "ride",
 
         createdAt:
           serverTimestamp(),
@@ -961,6 +981,11 @@ function BookRide() {
       console.log(
         "RYDO RIDE:",
         rideData
+      );
+
+      console.log(
+        "RYDO RIDE OTP:",
+        bookingOtp
       );
 
       /* ======================================================
@@ -1120,12 +1145,24 @@ function BookRide() {
         fare
       );
 
+      console.log(
+        "RIDE OTP:",
+        bookingOtp
+      );
+
       setRideDocId(
         rideRef.id
       );
 
       setBookingId(
         generatedBookingId
+      );
+
+      /*
+        Keep the generated OTP visible after booking.
+      */
+      setRideOtp(
+        bookingOtp
       );
 
       if (
@@ -1207,10 +1244,8 @@ function BookRide() {
 
   /* ==========================================================
      CONFIRM BOOKING
-
-     This function DOES NOT charge the wallet.
-
-     It validates everything and opens the 4-digit demo OTP.
+     
+     Generates a NEW 4-digit OTP and opens verification modal.
   ========================================================== */
 
   const confirmBooking = () => {
@@ -1307,9 +1342,6 @@ function BookRide() {
 
     /* ======================================================
        WALLET PRE-CHECK
-
-       This is ONLY a check.
-       No money is deducted here.
     ====================================================== */
 
     if (
@@ -1336,12 +1368,26 @@ function BookRide() {
     }
 
     /* ======================================================
-       OPEN 4-DIGIT DEMO OTP
+       GENERATE NEW 4-DIGIT OTP
     ====================================================== */
 
-    setOtp("");
+    const newOtp =
+      generateRideOtp();
+
+    setRideOtp(
+      newOtp
+    );
+
+    setOtpInput(
+      newOtp
+    );
 
     setOtpError("");
+
+    /*
+      The user can see the OTP in the modal.
+      They can give this code to the driver.
+    */
 
     setShowOtpModal(
       true
@@ -1349,19 +1395,15 @@ function BookRide() {
   };
 
   /* ==========================================================
-     VERIFY 4-DIGIT DEMO OTP
+     VERIFY RIDE OTP
   ========================================================== */
 
-  const verifyDemoOtp =
+  const verifyRideOtp =
     async () => {
       setOtpError("");
 
-      /* ======================================================
-         CHECK OTP LENGTH
-      ====================================================== */
-
       if (
-        otp.length !== 4
+        otpInput.length !== 4
       ) {
         setOtpError(
           "Please enter the 4-digit OTP."
@@ -1370,23 +1412,15 @@ function BookRide() {
         return;
       }
 
-      /* ======================================================
-         CHECK OTP VALUE
-      ====================================================== */
-
       if (
-        otp !== DEMO_OTP
+        otpInput !== rideOtp
       ) {
         setOtpError(
-          `Invalid OTP. Please enter the demo OTP ${DEMO_OTP}.`
+          "Invalid OTP. Please enter the 4-digit OTP shown above."
         );
 
         return;
       }
-
-      /* ======================================================
-         OTP VERIFIED
-      ====================================================== */
 
       setOtpVerifying(
         true
@@ -1397,21 +1431,18 @@ function BookRide() {
       );
 
       try {
-        /* ==================================================
-           OTP SUCCESS
-        ================================================== */
+        console.log(
+          "RYDO OTP VERIFIED:",
+          rideOtp
+        );
 
         setShowOtpModal(
           false
         );
 
-        setOtp("");
+        setOtpInput("");
 
         setOtpError("");
-
-        /* ==================================================
-           NOW ACTUALLY BOOK THE RIDE
-        ================================================== */
 
         await completeBookingAfterOtp();
       } catch (
@@ -1988,6 +2019,10 @@ function BookRide() {
 
       setRideDocId("");
 
+      setRideOtp("");
+
+      setOtpInput("");
+
       setJourneyStage(0);
 
       setJourneyProgress(0);
@@ -2476,9 +2511,7 @@ function BookRide() {
 
             </div>
 
-            {/* ==================================================
-                PAYMENT
-            ================================================== */}
+            {/* PAYMENT */}
 
             {selectedRide && (
               <div className="mt-8 rounded-[2rem] border border-[#FFBE0B]/20 bg-[#FFBE0B]/[0.045] p-6 md:p-8">
@@ -2813,7 +2846,7 @@ function BookRide() {
                   </button>
 
                   <p className="text-center text-xs text-gray-500 mt-3">
-                    A 4-digit demo OTP verification is required before your ride is booked.
+                    A 4-digit ride OTP will be generated for this booking.
                   </p>
 
                 </div>
@@ -2882,6 +2915,62 @@ function BookRide() {
                   <p className="font-black text-[#FFBE0B] mt-1">
                     {bookingId}
                   </p>
+
+                </div>
+
+              </div>
+
+              {/* ==================================================
+                  RIDE OTP — MAIN DISPLAY
+              ================================================== */}
+
+              <div className="mt-7 rounded-[2rem] border-2 border-[#FFBE0B]/40 bg-gradient-to-br from-[#FFBE0B]/15 to-[#FFBE0B]/5 p-6 md:p-8 shadow-xl shadow-[#FFBE0B]/5">
+
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+
+                  <div>
+
+                    <div className="flex items-center gap-3">
+
+                      <div className="w-12 h-12 rounded-2xl bg-[#FFBE0B] text-black flex items-center justify-center text-2xl">
+                        🔐
+                      </div>
+
+                      <div>
+
+                        <p className="text-[#FFBE0B] text-xs uppercase tracking-[0.2em] font-black">
+                          Ride Verification
+                        </p>
+
+                        <h3 className="text-2xl md:text-3xl font-black mt-1">
+                          Your Ride OTP
+                        </h3>
+
+                      </div>
+
+                    </div>
+
+                    <p className="text-gray-300 mt-4 font-semibold">
+                      Give this 4-digit OTP to your driver when you meet.
+                    </p>
+
+                    <p className="text-gray-500 text-sm mt-1">
+                      Keep this code private until the driver arrives.
+                    </p>
+
+                  </div>
+
+                  <div className="rounded-2xl bg-black/40 border border-[#FFBE0B]/30 px-8 py-6 text-center min-w-[220px]">
+
+                    <p className="text-xs text-gray-500 uppercase tracking-[0.2em] font-black">
+                      RYDO OTP
+                    </p>
+
+                    <p className="text-4xl md:text-5xl font-black tracking-[0.35em] text-[#FFBE0B] mt-3">
+                      {rideOtp}
+                    </p>
+
+                  </div>
 
                 </div>
 
@@ -3596,12 +3685,7 @@ function BookRide() {
         )}
 
       {/* ======================================================
-          4-DIGIT DEMO OTP MODAL
-
-          IMPORTANT:
-          This is only a demo/testing OTP.
-          No SMS is sent.
-          No Firebase Phone Authentication is used.
+          4-DIGIT RIDE OTP MODAL
       ====================================================== */}
 
       {showOtpModal && (
@@ -3620,7 +3704,7 @@ function BookRide() {
                 </p>
 
                 <h2 className="text-2xl md:text-3xl font-black mt-2">
-                  Verify Your Ride 📱
+                  Your Ride OTP 🔐
                 </h2>
 
               </div>
@@ -3641,37 +3725,26 @@ function BookRide() {
             </div>
 
             <p className="text-gray-400 text-sm mt-4 leading-6">
-              Enter the 4-digit verification code
-              to confirm your RYDO ride.
+              This is your unique 4-digit ride OTP.
+              Give this code to your driver when you meet.
             </p>
 
-            {/* DEMO NOTICE */}
+            {/* ==================================================
+                BIG OTP DISPLAY
+            ================================================== */}
 
-            <div className="mt-6 rounded-2xl border border-[#FFBE0B]/20 bg-[#FFBE0B]/10 p-5">
+            <div className="mt-6 rounded-2xl border-2 border-[#FFBE0B]/40 bg-[#FFBE0B]/10 p-6 text-center">
 
-              <div className="flex items-center gap-3">
+              <p className="text-xs text-gray-400 uppercase tracking-[0.2em] font-black">
+                Your OTP
+              </p>
 
-                <div className="w-10 h-10 rounded-xl bg-[#FFBE0B]/15 flex items-center justify-center text-xl">
-                  🧪
-                </div>
+              <p className="text-5xl font-black tracking-[0.4em] text-[#FFBE0B] mt-3 ml-2">
+                {rideOtp}
+              </p>
 
-                <div>
-
-                  <p className="text-xs text-gray-400 uppercase tracking-widest font-black">
-                    Demo OTP
-                  </p>
-
-                  <p className="text-2xl font-black tracking-[0.35em] text-[#FFBE0B] mt-1">
-                    {DEMO_OTP}
-                  </p>
-
-                </div>
-
-              </div>
-
-              <p className="text-xs text-gray-500 mt-3">
-                Demo mode — no SMS is sent and no
-                Firebase Phone Authentication is used.
+              <p className="text-xs text-gray-500 mt-4">
+                Give this number to the driver
               </p>
 
             </div>
@@ -3681,7 +3754,7 @@ function BookRide() {
             <div className="mt-6">
 
               <label className="text-xs text-gray-500 uppercase tracking-widest font-black">
-                Enter OTP
+                Enter OTP to confirm booking
               </label>
 
               <input
@@ -3690,9 +3763,11 @@ function BookRide() {
                 autoComplete="one-time-code"
                 maxLength={4}
                 autoFocus
-                value={otp}
+                value={
+                  otpInput
+                }
                 onChange={(e) => {
-                  setOtp(
+                  setOtpInput(
                     e.target.value
                       .replace(
                         /\D/g,
@@ -3711,11 +3786,11 @@ function BookRide() {
                     e.key ===
                     "Enter"
                   ) {
-                    verifyDemoOtp();
+                    verifyRideOtp();
                   }
                 }}
                 placeholder="Enter 4-digit OTP"
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-5 text-center text-2xl font-black tracking-[0.45em] text-white outline-none focus:border-[#FFBE0B] focus:ring-2 focus:ring-[#FFBE0B]/10"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-5 text-center text-3xl font-black tracking-[0.5em] text-white outline-none focus:border-[#FFBE0B] focus:ring-2 focus:ring-[#FFBE0B]/10"
               />
 
             </div>
@@ -3733,22 +3808,22 @@ function BookRide() {
             <button
               type="button"
               onClick={
-                verifyDemoOtp
+                verifyRideOtp
               }
               disabled={
                 otpVerifying ||
-                otp.length !== 4
+                otpInput.length !== 4
               }
               className={`mt-6 w-full rounded-2xl py-4 font-black text-lg transition ${
                 otpVerifying ||
-                otp.length !== 4
+                otpInput.length !== 4
                   ? "bg-gray-600 text-gray-300 cursor-not-allowed"
                   : "bg-[#FFBE0B] text-black hover:scale-[1.01] hover:shadow-xl hover:shadow-[#FFBE0B]/20"
               }`}
             >
               {otpVerifying
-                ? "Verifying OTP..."
-                : "Verify OTP →"}
+                ? "Booking Ride..."
+                : "Verify OTP & Book Ride →"}
             </button>
 
             {/* CANCEL */}
@@ -3767,7 +3842,7 @@ function BookRide() {
             </button>
 
             <p className="text-center text-[11px] text-gray-600 mt-5">
-              RYDO demo verification • No SMS charges
+              Your unique 4-digit RYDO ride verification code
             </p>
 
           </div>
