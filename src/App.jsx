@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 // ==========================================
 // PAGES
@@ -22,150 +22,94 @@ import RideDetails from "./pages/RideDetails";
 
 function App() {
   return (
-    <BrowserRouter basename="/RYDO-ride-sharing-app">
-      <Routes>
+    <Routes>
 
-        {/* ==========================================
-            HOME
-        ========================================== */}
+      {/* HOME */}
+      <Route path="/" element={<Home />} />
 
-        <Route
-          path="/"
-          element={<Home />}
-        />
+      {/* AUTHENTICATION */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
 
-        {/* ==========================================
-            AUTHENTICATION
-        ========================================== */}
+      {/* RIDE BOOKING */}
+      <Route path="/bookride" element={<BookRide />} />
 
-        <Route
-          path="/login"
-          element={<Login />}
-        />
+      {/* RIDE HISTORY */}
+      <Route path="/ride-history" element={<RideHistory />} />
+      <Route path="/ridehistory" element={<RideHistory />} />
 
-        <Route
-          path="/signup"
-          element={<Signup />}
-        />
+      {/* RIDE DETAILS */}
+      <Route
+        path="/ride-details/:rideId"
+        element={<RideDetails />}
+      />
 
-        {/* ==========================================
-            RIDE BOOKING
-        ========================================== */}
+      {/* PARCEL DELIVERY */}
+      <Route
+        path="/parcel-delivery"
+        element={<ParcelDelivery />}
+      />
 
-        <Route
-          path="/bookride"
-          element={<BookRide />}
-        />
+      <Route
+        path="/parceldelivery"
+        element={
+          <Navigate
+            to="/parcel-delivery"
+            replace
+          />
+        }
+      />
 
-        {/* ==========================================
-            RIDE HISTORY
-        ========================================== */}
+      {/* PARCEL STATUS */}
+      <Route
+        path="/parcel-status/:parcelId"
+        element={<ParcelStatus />}
+      />
 
-        <Route
-          path="/ride-history"
-          element={<RideHistory />}
-        />
+      {/* OTHER PAGES */}
+      <Route
+        path="/learn-more"
+        element={<LearnMore />}
+      />
 
-        {/* Backward-compatible URL */}
+      <Route
+        path="/features"
+        element={<Features />}
+      />
 
-        <Route
-          path="/ridehistory"
-          element={<RideHistory />}
-        />
+      <Route
+        path="/about"
+        element={<About />}
+      />
 
-        {/* ==========================================
-            RIDE DETAILS
-        ========================================== */}
+      <Route
+        path="/contact"
+        element={<Contact />}
+      />
 
-        <Route
-          path="/ride-details/:rideId"
-          element={<RideDetails />}
-        />
+      {/* USER PAGES */}
+      <Route
+        path="/wallet"
+        element={<Wallet />}
+      />
 
-        {/* ==========================================
-            PARCEL DELIVERY
-        ========================================== */}
+      <Route
+        path="/profile"
+        element={<Profile />}
+      />
 
-        <Route
-          path="/parcel-delivery"
-          element={<ParcelDelivery />}
-        />
+      <Route
+        path="/driver-dashboard"
+        element={<DriverDashboard />}
+      />
 
-        {/* Backward-compatible URL */}
+      {/* FALLBACK */}
+      <Route
+        path="*"
+        element={<Navigate to="/" replace />}
+      />
 
-        <Route
-          path="/parceldelivery"
-          element={
-            <Navigate
-              to="/parcel-delivery"
-              replace
-            />
-          }
-        />
-
-        {/* ==========================================
-            PARCEL STATUS
-        ========================================== */}
-
-        <Route
-          path="/parcel-status/:parcelId"
-          element={<ParcelStatus />}
-        />
-
-        {/* ==========================================
-            OTHER PAGES
-        ========================================== */}
-
-        <Route
-          path="/learn-more"
-          element={<LearnMore />}
-        />
-
-        <Route
-          path="/features"
-          element={<Features />}
-        />
-
-        <Route
-          path="/about"
-          element={<About />}
-        />
-
-        <Route
-          path="/contact"
-          element={<Contact />}
-        />
-
-        {/* ==========================================
-            USER PAGES
-        ========================================== */}
-
-        <Route
-          path="/wallet"
-          element={<Wallet />}
-        />
-
-        <Route
-          path="/profile"
-          element={<Profile />}
-        />
-
-        <Route
-          path="/driver-dashboard"
-          element={<DriverDashboard />}
-        />
-
-        {/* ==========================================
-            FALLBACK
-        ========================================== */}
-
-        <Route
-          path="*"
-          element={<Navigate to="/" replace />}
-        />
-
-      </Routes>
-    </BrowserRouter>
+    </Routes>
   );
 }
 
