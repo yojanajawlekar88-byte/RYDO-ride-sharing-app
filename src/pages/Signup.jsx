@@ -1,92 +1,212 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
+
+import {
+  doc,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
 
 import { auth, db } from "../firebase";
 
 function Signup() {
   const navigate = useNavigate();
 
-  const [fullName, setFullName] = useState("");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] =
+    useState("");
 
   const [loading, setLoading] = useState(false);
+
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  // ============================================================
+  // SIGNUP
+  // ============================================================
 
   const handleSignup = async (e) => {
     e.preventDefault();
 
     setError("");
+    setSuccess("");
 
-    // Validation
-    if (!fullName || !email || !phone || !password || !confirmPassword) {
-      setError("Please fill all fields.");
+    const cleanName = name.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phone.trim();
+
+    // ----------------------------------------------------------
+    // VALIDATION
+    // ----------------------------------------------------------
+
+    if (!cleanName) {
+      setError("Please enter your full name.");
       return;
     }
-    if (phone.length !== 10) {
-  setError("Phone number must be exactly 10 digits.");
-  return;
-}
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+    if (!cleanEmail) {
+      setError("Please enter your email address.");
+      return;
+    }
+
+    if (!cleanPhone) {
+      setError("Please enter your phone number.");
       return;
     }
 
     if (password.length < 6) {
-      setError("Password must contain at least 6 characters.");
+      setError(
+        "Password must contain at least 6 characters."
+      );
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError(
+        "Passwords do not match."
+      );
       return;
     }
 
     try {
       setLoading(true);
 
-      // 1. Create Firebase Authentication account
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      // --------------------------------------------------------
+      // CREATE FIREBASE AUTH ACCOUNT
+      // --------------------------------------------------------
+
+      const userCredential =
+        await createUserWithEmailAndPassword(
+          auth,
+          cleanEmail,
+          password
+        );
 
       const user = userCredential.user;
 
-      // 2. Create Firestore profile
-      await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        fullName: fullName,
-        email: email,
-        phone: phone,
+      // --------------------------------------------------------
+      // SAVE DISPLAY NAME IN FIREBASE AUTH
+      // --------------------------------------------------------
 
-        totalRides: 0,
-        rating: 5.0,
-        wallet: 0,
-        membership: "Silver",
-
-        createdAt: new Date().toISOString(),
+      await updateProfile(user, {
+        displayName: cleanName,
       });
 
-      // 3. Success
-      alert("Account created successfully! 🚗");
+      // --------------------------------------------------------
+      // CREATE FIRESTORE USER DOCUMENT
+      //
+      // wallet = canonical wallet balance
+      // walletBalance = backwards compatibility
+      // --------------------------------------------------------
 
-      // 4. Go to profile
-      navigate("/profile");
+      const userRef = doc(
+        db,
+        "users",
+        user.uid
+      );
+
+      await setDoc(
+        userRef,
+        {
+          uid: user.uid,
+
+          name: cleanName,
+
+          displayName: cleanName,
+
+          email: cleanEmail,
+
+          phone: cleanPhone,
+
+          wallet: 0,
+
+          walletBalance: 0,
+
+          role: "user",
+
+          createdAt: serverTimestamp(),
+
+          updatedAt: serverTimestamp(),
+
+          transactions: [],
+        },
+        {
+          merge: true,
+        }
+      );
+
+      // --------------------------------------------------------
+      // SUCCESS
+      // --------------------------------------------------------
+
+      setSuccess(
+        "Account created successfully! Redirecting..."
+      );
+
+      // Give Firebase state a moment to settle
+      setTimeout(() => {
+        navigate("/profile", {
+          replace: true,
+        });
+      }, 700);
 
     } catch (error) {
-      console.error(error);
+      console.error(
+        "SIGNUP ERROR:",
+        error
+      );
 
-      if (error.code === "auth/email-already-in-use") {
-        setError("An account already exists with this email.");
-      } else if (error.code === "auth/invalid-email") {
-        setError("Please enter a valid email address.");
-      } else if (error.code === "auth/weak-password") {
-        setError("Password is too weak. Use at least 6 characters.");
-      } else {
-        setError(error.message);
+      switch (error.code) {
+        case "auth/email-already-in-use":
+          setError(
+            "An account already exists with this email. Please login instead."
+          );
+          break;
+
+        case "auth/invalid-email":
+          setError(
+            "Please enter a valid email address."
+          );
+          break;
+
+        case "auth/weak-password":
+          setError(
+            "Your password is too weak. Use at least 6 characters."
+          );
+          break;
+
+        case "auth/operation-not-allowed":
+          setError(
+            "Email/password authentication is disabled in Firebase. Enable it in Firebase Authentication."
+          );
+          break;
+
+        case "auth/network-request-failed":
+          setError(
+            "Network error. Please check your internet connection."
+          );
+          break;
+
+        case "auth/too-many-requests":
+          setError(
+            "Too many requests. Please wait and try again."
+          );
+          break;
+
+        default:
+          setError(
+            error.message ||
+              "Unable to create your account. Please try again."
+          );
       }
 
     } finally {
@@ -97,134 +217,157 @@ function Signup() {
   return (
     <div className="min-h-screen bg-[#0B1020] text-white flex items-center justify-center px-6 py-20">
 
-      <div className="w-full max-w-5xl">
+      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-12 items-center">
 
-        <div className="grid lg:grid-cols-2 gap-10 items-center">
+        {/* =====================================================
+            LEFT SIDE
+        ====================================================== */}
 
-          {/* LEFT SIDE */}
+        <div className="hidden lg:block">
 
-          <div className="hidden lg:block">
+          <p className="text-[#FFBE0B] font-bold uppercase tracking-[0.3em]">
+            Join RYDO
+          </p>
 
-            <Link
-              to="/"
-              className="text-5xl font-black text-[#FFBE0B]"
-            >
-              RYDO
-            </Link>
+          <h1 className="text-6xl font-black mt-5 leading-tight">
+            Start Your
+            <br />
+            <span className="text-[#FFBE0B]">
+              RYDO Journey.
+            </span>
+          </h1>
 
-            <h1 className="text-6xl font-black mt-8 leading-tight">
-              Start Your
-              <br />
-              <span className="text-[#FFBE0B]">
-                Journey.
-              </span>
-            </h1>
+          <p className="text-gray-400 text-lg mt-6 max-w-lg leading-relaxed">
+            Create your RYDO account and enjoy
+            fast booking, live driver tracking,
+            secure payments and easy ride management.
+          </p>
 
-            <p className="text-gray-400 text-lg mt-6 max-w-md">
-              Create your RYDO account and enjoy fast,
-              safe and affordable rides whenever you need them.
-            </p>
+          <div className="space-y-4 mt-10">
 
-            <div className="mt-10 space-y-4">
+            <div className="flex items-center gap-4 bg-[#1E293B] rounded-2xl p-5 border border-white/5">
 
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-[#1E293B] rounded-xl flex items-center justify-center text-2xl">
-                  🚖
-                </div>
-
-                <div>
-                  <h3 className="font-bold">
-                    Easy Ride Booking
-                  </h3>
-
-                  <p className="text-gray-400 text-sm">
-                    Book rides in just a few taps.
-                  </p>
-                </div>
+              <div className="w-12 h-12 rounded-xl bg-[#FFBE0B]/10 flex items-center justify-center text-2xl">
+                🚖
               </div>
 
-              <div className="flex items-center gap-4">
+              <div>
+                <h3 className="font-bold">
+                  Fast Ride Booking
+                </h3>
 
-                <div className="w-12 h-12 bg-[#1E293B] rounded-xl flex items-center justify-center text-2xl">
-                  📍
-                </div>
-
-                <div>
-                  <h3 className="font-bold">
-                    Live Tracking
-                  </h3>
-
-                  <p className="text-gray-400 text-sm">
-                    Track your driver in real time.
-                  </p>
-                </div>
-
+                <p className="text-gray-400 text-sm mt-1">
+                  Book a ride in just a few clicks.
+                </p>
               </div>
 
-              <div className="flex items-center gap-4">
+            </div>
 
-                <div className="w-12 h-12 bg-[#1E293B] rounded-xl flex items-center justify-center text-2xl">
-                  🛡️
-                </div>
+            <div className="flex items-center gap-4 bg-[#1E293B] rounded-2xl p-5 border border-white/5">
 
-                <div>
-                  <h3 className="font-bold">
-                    Safe & Secure
-                  </h3>
+              <div className="w-12 h-12 rounded-xl bg-[#FFBE0B]/10 flex items-center justify-center text-2xl">
+                📍
+              </div>
 
-                  <p className="text-gray-400 text-sm">
-                    Your safety is our priority.
-                  </p>
-                </div>
+              <div>
+                <h3 className="font-bold">
+                  Live Tracking
+                </h3>
 
+                <p className="text-gray-400 text-sm mt-1">
+                  Follow your driver's journey.
+                </p>
+              </div>
+
+            </div>
+
+            <div className="flex items-center gap-4 bg-[#1E293B] rounded-2xl p-5 border border-white/5">
+
+              <div className="w-12 h-12 rounded-xl bg-[#FFBE0B]/10 flex items-center justify-center text-2xl">
+                💳
+              </div>
+
+              <div>
+                <h3 className="font-bold">
+                  RYDO Wallet
+                </h3>
+
+                <p className="text-gray-400 text-sm mt-1">
+                  Manage your ride payments securely.
+                </p>
               </div>
 
             </div>
 
           </div>
 
+        </div>
 
-          {/* SIGNUP CARD */}
+        {/* =====================================================
+            SIGNUP CARD
+        ====================================================== */}
+
+        <div className="w-full max-w-md mx-auto">
 
           <div className="bg-[#1E293B] rounded-[2rem] p-8 md:p-10 shadow-2xl border border-white/10">
+
+            {/* LOGO */}
 
             <div className="text-center">
 
               <Link
                 to="/"
-                className="text-4xl font-black text-[#FFBE0B] lg:hidden"
+                className="text-4xl font-black text-[#FFBE0B] hover:opacity-90 transition"
               >
                 RYDO
               </Link>
 
-              <h2 className="text-3xl font-bold mt-4">
+              <h2 className="text-3xl font-bold mt-8">
                 Create Account 🚗
               </h2>
 
               <p className="text-gray-400 mt-2">
-                Join RYDO today.
+                Start your journey with RYDO.
               </p>
 
             </div>
 
-
-            {/* ERROR */}
+            {/* =================================================
+                ERROR
+            ================================================== */}
 
             {error && (
-              <div className="mt-6 bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl p-4 text-sm">
-                ⚠️ {error}
+              <div className="mt-6 bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl p-4 text-sm leading-relaxed">
+                <span className="mr-2">
+                  ⚠️
+                </span>
+                {error}
               </div>
             )}
 
+            {/* =================================================
+                SUCCESS
+            ================================================== */}
 
-            {/* FORM */}
+            {success && (
+              <div className="mt-6 bg-green-500/10 border border-green-500/30 text-green-400 rounded-xl p-4 text-sm leading-relaxed">
+                <span className="mr-2">
+                  ✅
+                </span>
+                {success}
+              </div>
+            )}
+
+            {/* =================================================
+                FORM
+            ================================================== */}
 
             <form
               onSubmit={handleSignup}
               className="mt-8 space-y-5"
             >
 
-              {/* FULL NAME */}
+              {/* NAME */}
 
               <div>
 
@@ -234,14 +377,18 @@ function Signup() {
 
                 <input
                   type="text"
-                  placeholder="Enter your full name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full bg-[#0B1020] border border-white/10 rounded-xl px-4 py-4 outline-none focus:border-[#FFBE0B] transition"
+                  autoComplete="name"
+                  placeholder="Your full name"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setError("");
+                  }}
+                  disabled={loading}
+                  className="w-full bg-[#0B1020] border border-white/10 rounded-xl px-4 py-4 outline-none focus:border-[#FFBE0B] transition disabled:opacity-60"
                 />
 
               </div>
-
 
               {/* EMAIL */}
 
@@ -253,46 +400,41 @@ function Signup() {
 
                 <input
                   type="email"
+                  autoComplete="email"
                   placeholder="you@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-[#0B1020] border border-white/10 rounded-xl px-4 py-4 outline-none focus:border-[#FFBE0B] transition"
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError("");
+                  }}
+                  disabled={loading}
+                  className="w-full bg-[#0B1020] border border-white/10 rounded-xl px-4 py-4 outline-none focus:border-[#FFBE0B] transition disabled:opacity-60"
                 />
 
               </div>
 
-
               {/* PHONE */}
 
-<div>
+              <div>
 
-  <label className="block text-sm font-semibold mb-2">
-    Phone Number
-  </label>
+                <label className="block text-sm font-semibold mb-2">
+                  Phone Number
+                </label>
 
-  <input
-    type="tel"
-    placeholder="Enter 10-digit phone number"
-    value={phone}
-    maxLength={10}
-    inputMode="numeric"
-    onChange={(e) => {
-      const value = e.target.value.replace(/\D/g, "");
+                <input
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="Enter phone number"
+                  value={phone}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    setError("");
+                  }}
+                  disabled={loading}
+                  className="w-full bg-[#0B1020] border border-white/10 rounded-xl px-4 py-4 outline-none focus:border-[#FFBE0B] transition disabled:opacity-60"
+                />
 
-      if (value.length <= 10) {
-        setPhone(value);
-      }
-    }}
-    className="w-full bg-[#0B1020] border border-white/10 rounded-xl px-4 py-4 outline-none focus:border-[#FFBE0B] transition"
-  />
-
-  {phone.length > 0 && phone.length < 10 && (
-    <p className="text-red-400 text-sm mt-2">
-      Phone number must be 10 digits.
-    </p>
-  )}
-
-</div>
+              </div>
 
               {/* PASSWORD */}
 
@@ -304,14 +446,18 @@ function Signup() {
 
                 <input
                   type="password"
+                  autoComplete="new-password"
                   placeholder="Minimum 6 characters"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#0B1020] border border-white/10 rounded-xl px-4 py-4 outline-none focus:border-[#FFBE0B] transition"
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError("");
+                  }}
+                  disabled={loading}
+                  className="w-full bg-[#0B1020] border border-white/10 rounded-xl px-4 py-4 outline-none focus:border-[#FFBE0B] transition disabled:opacity-60"
                 />
 
               </div>
-
 
               {/* CONFIRM PASSWORD */}
 
@@ -323,35 +469,50 @@ function Signup() {
 
                 <input
                   type="password"
-                  placeholder="Confirm your password"
+                  autoComplete="new-password"
+                  placeholder="Re-enter your password"
                   value={confirmPassword}
-                  onChange={(e) =>
-                    setConfirmPassword(e.target.value)
-                  }
-                  className="w-full bg-[#0B1020] border border-white/10 rounded-xl px-4 py-4 outline-none focus:border-[#FFBE0B] transition"
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    setError("");
+                  }}
+                  disabled={loading}
+                  className="w-full bg-[#0B1020] border border-white/10 rounded-xl px-4 py-4 outline-none focus:border-[#FFBE0B] transition disabled:opacity-60"
                 />
 
               </div>
 
-
-              {/* BUTTON */}
+              {/* SIGNUP BUTTON */}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#FFBE0B] text-black py-4 rounded-xl font-black text-lg hover:scale-[1.02] transition disabled:opacity-50"
+                className="w-full bg-[#FFBE0B] text-black py-4 rounded-xl font-black text-lg hover:scale-[1.02] transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {loading
                   ? "Creating Account..."
-                  : "Create Account →"}
+                  : "Create RYDO Account →"}
               </button>
 
             </form>
 
+            {/* DIVIDER */}
+
+            <div className="flex items-center gap-4 my-7">
+
+              <div className="h-px bg-white/10 flex-1" />
+
+              <span className="text-gray-500 text-sm">
+                OR
+              </span>
+
+              <div className="h-px bg-white/10 flex-1" />
+
+            </div>
 
             {/* LOGIN */}
 
-            <p className="text-center text-gray-400 mt-7">
+            <p className="text-center text-gray-400">
 
               Already have an account?{" "}
 
