@@ -19,6 +19,25 @@ import {
 import { onAuthStateChanged } from "firebase/auth";
 
 /* ============================================================
+   DEMO OTP
+   ============================================================
+
+   CHANGE ONLY THIS VALUE TO CHANGE THE OTP.
+
+   Examples:
+   "4827"
+   "7391"
+   "5614"
+   "2048"
+
+   IMPORTANT:
+   This is a DEMO OTP.
+   No SMS is sent.
+============================================================ */
+
+const DEMO_OTP = "4827";
+
+/* ============================================================
    RIDE OPTIONS
 ============================================================ */
 
@@ -347,6 +366,22 @@ function BookRide() {
     useState("");
 
   /* ==========================================================
+     4-DIGIT DEMO OTP
+  ========================================================== */
+
+  const [showOtpModal, setShowOtpModal] =
+    useState(false);
+
+  const [otp, setOtp] =
+    useState("");
+
+  const [otpError, setOtpError] =
+    useState("");
+
+  const [otpVerifying, setOtpVerifying] =
+    useState(false);
+
+  /* ==========================================================
      JOURNEY
   ========================================================== */
 
@@ -413,11 +448,6 @@ function BookRide() {
 
   /* ==========================================================
      WALLET LISTENER
-     
-     CANONICAL FIELD:
-       users/{uid}.wallet
-
-     walletBalance is only a local React state variable.
   ========================================================== */
 
   useEffect(() => {
@@ -447,12 +477,6 @@ function BookRide() {
 
         const data = snapshot.data();
 
-        /*
-         * `wallet` is the canonical balance.
-         *
-         * `walletBalance` is only used as a fallback
-         * for old documents that may not have `wallet`.
-         */
         const balance = Number(
           data.wallet ??
             data.walletBalance ??
@@ -656,156 +680,125 @@ function BookRide() {
   };
 
   /* ==========================================================
-     CONFIRM + BOOK RIDE
+     CLOSE OTP
   ========================================================== */
 
-  const confirmBooking = async () => {
-    console.log(
-      "================================"
-    );
-
-    console.log(
-      "RYDO CONFIRM & PAY CLICKED"
-    );
-
-    console.log(
-      "================================"
-    );
-
-    if (
-      bookingProcessing ||
-      bookingConfirmed
-    ) {
+  const closeOtpModal = () => {
+    if (otpVerifying) {
       return;
     }
 
-    setError("");
+    setShowOtpModal(false);
+    setOtp("");
+    setOtpError("");
+  };
 
-    const user =
-      auth.currentUser ||
-      currentUser;
+  /* ==========================================================
+     ACTUAL FIRESTORE BOOKING
 
-    if (!user) {
-      setError(
-        "Please login before booking a ride."
+     IMPORTANT:
+     This function is called ONLY after
+     the 4-digit demo OTP has been verified.
+  ========================================================== */
+
+  const completeBookingAfterOtp =
+    async () => {
+      console.log(
+        "================================"
       );
 
-      navigate("/login");
-
-      return;
-    }
-
-    if (!pickup) {
-      setError(
-        "Please select a pickup location."
+      console.log(
+        "RYDO OTP VERIFIED - BOOKING RIDE"
       );
 
-      return;
-    }
-
-    if (!destination) {
-      setError(
-        "Please select a destination."
+      console.log(
+        "================================"
       );
 
-      return;
-    }
+      const user =
+        auth.currentUser ||
+        currentUser;
 
-    if (!selectedRide) {
-      setError(
-        "Please select a ride."
-      );
-
-      return;
-    }
-
-    const pickupCoordinates =
-      getCoordinates(pickup);
-
-    const destinationCoordinates =
-      getCoordinates(destination);
-
-    if (
-      !pickupCoordinates ||
-      !destinationCoordinates
-    ) {
-      setError(
-        "Invalid pickup or destination coordinates. Please select both locations again."
-      );
-
-      return;
-    }
-
-    const pickupLat =
-      pickupCoordinates.lat;
-
-    const pickupLng =
-      pickupCoordinates.lng;
-
-    const destinationLat =
-      destinationCoordinates.lat;
-
-    const destinationLng =
-      destinationCoordinates.lng;
-
-    const driver =
-      driverData[
-        selectedRide.name
-      ];
-
-    if (!driver) {
-      setError(
-        "Driver information is unavailable."
-      );
-
-      return;
-    }
-
-    const fare = Number(
-      selectedRide.fare
-    );
-
-    if (
-      !Number.isFinite(fare) ||
-      fare <= 0
-    ) {
-      setError(
-        "Invalid ride fare."
-      );
-
-      return;
-    }
-
-    /* ========================================================
-       WALLET PRE-CHECK
-    ======================================================== */
-
-    if (
-      paymentMethod === "wallet"
-    ) {
-      const balance =
-        Number(walletBalance);
-
-      if (!Number.isFinite(balance)) {
-        setError(
-          "Unable to read your RYDO Wallet balance."
+      if (!user) {
+        throw new Error(
+          "Please login before booking a ride."
         );
-
-        return;
       }
 
-      if (balance < fare) {
-        setError(
-          `Insufficient wallet balance. Available ₹${balance}, required ₹${fare}.`
+      const pickupCoordinates =
+        getCoordinates(pickup);
+
+      const destinationCoordinates =
+        getCoordinates(destination);
+
+      if (
+        !pickupCoordinates ||
+        !destinationCoordinates
+      ) {
+        throw new Error(
+          "Invalid pickup or destination coordinates."
         );
-
-        return;
       }
-    }
 
-    setBookingProcessing(true);
+      const pickupLat =
+        pickupCoordinates.lat;
 
-    try {
+      const pickupLng =
+        pickupCoordinates.lng;
+
+      const destinationLat =
+        destinationCoordinates.lat;
+
+      const destinationLng =
+        destinationCoordinates.lng;
+
+      const driver =
+        driverData[
+          selectedRide.name
+        ];
+
+      if (!driver) {
+        throw new Error(
+          "Driver information is unavailable."
+        );
+      }
+
+      const fare = Number(
+        selectedRide.fare
+      );
+
+      if (
+        !Number.isFinite(fare) ||
+        fare <= 0
+      ) {
+        throw new Error(
+          "Invalid ride fare."
+        );
+      }
+
+      /* ======================================================
+         WALLET PRE-CHECK
+      ====================================================== */
+
+      if (
+        paymentMethod === "wallet"
+      ) {
+        const balance =
+          Number(walletBalance);
+
+        if (!Number.isFinite(balance)) {
+          throw new Error(
+            "Unable to read your RYDO Wallet balance."
+          );
+        }
+
+        if (balance < fare) {
+          throw new Error(
+            `Insufficient wallet balance. Available ₹${balance}, required ₹${fare}.`
+          );
+        }
+      }
+
       /* ======================================================
          IDS
       ====================================================== */
@@ -955,6 +948,12 @@ function BookRide() {
           paymentMethod ===
           "wallet",
 
+        otpVerified:
+          true,
+
+        otpType:
+          "demo-4-digit",
+
         createdAt:
           serverTimestamp(),
       };
@@ -966,19 +965,11 @@ function BookRide() {
 
       /* ======================================================
          ATOMIC FIRESTORE TRANSACTION
-         
-         IMPORTANT:
-         wallet is the canonical field.
       ====================================================== */
 
       await runTransaction(
         db,
         async (transaction) => {
-          /*
-           * IMPORTANT:
-           * Firestore requires all reads before writes.
-           */
-
           const userSnapshot =
             await transaction.get(
               userRef
@@ -994,15 +985,6 @@ function BookRide() {
 
           const userData =
             userSnapshot.data();
-
-          /*
-           * CANONICAL WALLET BALANCE
-           *
-           * wallet is preferred.
-           *
-           * walletBalance is only a
-           * backwards-compatible fallback.
-           */
 
           const currentWallet =
             Number(
@@ -1039,15 +1021,6 @@ function BookRide() {
             paymentMethod ===
             "wallet"
           ) {
-            /*
-             * IMPORTANT:
-             * This check happens AGAIN inside
-             * the Firestore transaction.
-             *
-             * This prevents two tabs / two clicks
-             * from spending the same balance.
-             */
-
             if (
               currentWallet <
               fare
@@ -1066,10 +1039,6 @@ function BookRide() {
               "→",
               newBalance
             );
-
-            /* ================================================
-               WALLET TRANSACTION RECORD
-            ================================================= */
 
             const walletTransaction =
               {
@@ -1099,14 +1068,6 @@ function BookRide() {
                 date:
                   new Date().toISOString(),
               };
-
-            /*
-             * wallet = CANONICAL
-             *
-             * walletBalance = backwards compatibility
-             *
-             * transactions = payment history
-             */
 
             transaction.update(
               userRef,
@@ -1166,14 +1127,6 @@ function BookRide() {
       setBookingId(
         generatedBookingId
       );
-
-      /*
-       * The onSnapshot wallet listener will also
-       * update this automatically.
-       *
-       * This immediate update makes the UI feel
-       * instant while Firebase syncs.
-       */
 
       if (
         paymentMethod ===
@@ -1242,10 +1195,6 @@ function BookRide() {
 
       setError("");
 
-      /* ======================================================
-         SCROLL TO CONFIRMATION
-      ====================================================== */
-
       setTimeout(() => {
         confirmationRef.current?.scrollIntoView(
           {
@@ -1254,95 +1203,305 @@ function BookRide() {
           }
         );
       }, 300);
-    } catch (bookingError) {
-      console.error(
-        "================================"
-      );
+    };
 
-      console.error(
-        "RYDO CONFIRM & PAY ERROR:",
-        bookingError
-      );
+  /* ==========================================================
+     CONFIRM BOOKING
 
-      console.error(
-        "ERROR CODE:",
-        bookingError?.code
-      );
+     This function DOES NOT charge the wallet.
 
-      console.error(
-        "ERROR MESSAGE:",
-        bookingError?.message
-      );
+     It validates everything and opens the 4-digit demo OTP.
+  ========================================================== */
 
-      console.error(
-        "================================"
-      );
+  const confirmBooking = () => {
+    console.log(
+      "================================"
+    );
 
-      setBookingConfirmed(
-        false
-      );
+    console.log(
+      "RYDO CONFIRM & PAY CLICKED"
+    );
 
-      const errorCode =
-        bookingError?.code ||
-        "";
+    console.log(
+      "================================"
+    );
 
-      const errorMessage =
-        bookingError?.message ||
-        "";
-
-      if (
-        errorMessage
-          .toLowerCase()
-          .includes(
-            "insufficient wallet"
-          )
-      ) {
-        setError(
-          errorMessage
-        );
-      } else if (
-        errorCode ===
-        "permission-denied"
-      ) {
-        setError(
-          "Firebase permission denied. Check your Firestore rules for the users and rides collections."
-        );
-      } else if (
-        errorCode ===
-        "unauthenticated"
-      ) {
-        setError(
-          "Your login session expired. Please login again."
-        );
-      } else if (
-        errorCode ===
-        "failed-precondition"
-      ) {
-        setError(
-          "Firestore is not configured correctly for this transaction."
-        );
-      } else {
-        setError(
-          errorMessage ||
-            "Payment failed. Please try again."
-        );
-      }
-    } finally {
-      setBookingProcessing(
-        false
-      );
+    if (
+      bookingProcessing ||
+      bookingConfirmed
+    ) {
+      return;
     }
+
+    setError("");
+
+    const user =
+      auth.currentUser ||
+      currentUser;
+
+    if (!user) {
+      setError(
+        "Please login before booking a ride."
+      );
+
+      navigate("/login");
+
+      return;
+    }
+
+    if (!pickup) {
+      setError(
+        "Please select a pickup location."
+      );
+
+      return;
+    }
+
+    if (!destination) {
+      setError(
+        "Please select a destination."
+      );
+
+      return;
+    }
+
+    if (!selectedRide) {
+      setError(
+        "Please select a ride."
+      );
+
+      return;
+    }
+
+    const pickupCoordinates =
+      getCoordinates(pickup);
+
+    const destinationCoordinates =
+      getCoordinates(destination);
+
+    if (
+      !pickupCoordinates ||
+      !destinationCoordinates
+    ) {
+      setError(
+        "Invalid pickup or destination coordinates. Please select both locations again."
+      );
+
+      return;
+    }
+
+    const fare = Number(
+      selectedRide.fare
+    );
+
+    if (
+      !Number.isFinite(fare) ||
+      fare <= 0
+    ) {
+      setError(
+        "Invalid ride fare."
+      );
+
+      return;
+    }
+
+    /* ======================================================
+       WALLET PRE-CHECK
+
+       This is ONLY a check.
+       No money is deducted here.
+    ====================================================== */
+
+    if (
+      paymentMethod === "wallet"
+    ) {
+      const balance =
+        Number(walletBalance);
+
+      if (!Number.isFinite(balance)) {
+        setError(
+          "Unable to read your RYDO Wallet balance."
+        );
+
+        return;
+      }
+
+      if (balance < fare) {
+        setError(
+          `Insufficient wallet balance. Available ₹${balance}, required ₹${fare}.`
+        );
+
+        return;
+      }
+    }
+
+    /* ======================================================
+       OPEN 4-DIGIT DEMO OTP
+    ====================================================== */
+
+    setOtp("");
+
+    setOtpError("");
+
+    setShowOtpModal(
+      true
+    );
   };
 
   /* ==========================================================
+     VERIFY 4-DIGIT DEMO OTP
+  ========================================================== */
+
+  const verifyDemoOtp =
+    async () => {
+      setOtpError("");
+
+      /* ======================================================
+         CHECK OTP LENGTH
+      ====================================================== */
+
+      if (
+        otp.length !== 4
+      ) {
+        setOtpError(
+          "Please enter the 4-digit OTP."
+        );
+
+        return;
+      }
+
+      /* ======================================================
+         CHECK OTP VALUE
+      ====================================================== */
+
+      if (
+        otp !== DEMO_OTP
+      ) {
+        setOtpError(
+          `Invalid OTP. Please enter the demo OTP ${DEMO_OTP}.`
+        );
+
+        return;
+      }
+
+      /* ======================================================
+         OTP VERIFIED
+      ====================================================== */
+
+      setOtpVerifying(
+        true
+      );
+
+      setBookingProcessing(
+        true
+      );
+
+      try {
+        /* ==================================================
+           OTP SUCCESS
+        ================================================== */
+
+        setShowOtpModal(
+          false
+        );
+
+        setOtp("");
+
+        setOtpError("");
+
+        /* ==================================================
+           NOW ACTUALLY BOOK THE RIDE
+        ================================================== */
+
+        await completeBookingAfterOtp();
+      } catch (
+        bookingError
+      ) {
+        console.error(
+          "================================"
+        );
+
+        console.error(
+          "RYDO BOOKING ERROR:",
+          bookingError
+        );
+
+        console.error(
+          "ERROR CODE:",
+          bookingError?.code
+        );
+
+        console.error(
+          "ERROR MESSAGE:",
+          bookingError?.message
+        );
+
+        console.error(
+          "================================"
+        );
+
+        setBookingConfirmed(
+          false
+        );
+
+        const errorCode =
+          bookingError?.code ||
+          "";
+
+        const errorMessage =
+          bookingError?.message ||
+          "";
+
+        if (
+          errorMessage
+            .toLowerCase()
+            .includes(
+              "insufficient wallet"
+            )
+        ) {
+          setError(
+            errorMessage
+          );
+        } else if (
+          errorCode ===
+          "permission-denied"
+        ) {
+          setError(
+            "Firebase permission denied. Check your Firestore rules for the users and rides collections."
+          );
+        } else if (
+          errorCode ===
+          "unauthenticated"
+        ) {
+          setError(
+            "Your login session expired. Please login again."
+          );
+        } else if (
+          errorCode ===
+          "failed-precondition"
+        ) {
+          setError(
+            "Firestore is not configured correctly for this transaction."
+          );
+        } else {
+          setError(
+            errorMessage ||
+              "Booking failed. Please try again."
+          );
+        }
+      } finally {
+        setOtpVerifying(
+          false
+        );
+
+        setBookingProcessing(
+          false
+        );
+      }
+    };
+
+  /* ==========================================================
      CONNECTED JOURNEY CLOCK
-
-     ONE TIMER CONTROLS:
-
-       1. journeyStage
-       2. journeyProgress
-       3. driverLocation
-       4. Firestore ride status
   ========================================================== */
 
   useEffect(() => {
@@ -1519,10 +1678,6 @@ function BookRide() {
       let location =
         driverStart;
 
-      /* ======================================================
-         DRIVER ASSIGNED
-      ====================================================== */
-
       if (
         elapsed <
         assignedMs
@@ -1531,13 +1686,7 @@ function BookRide() {
 
         location =
           driverStart;
-      }
-
-      /* ======================================================
-         DRIVER ARRIVING
-      ====================================================== */
-
-      else if (
+      } else if (
         elapsed <
         assignedMs +
           arrivalMs
@@ -1561,13 +1710,7 @@ function BookRide() {
               )
             )
           );
-      }
-
-      /* ======================================================
-         DRIVER ARRIVED
-      ====================================================== */
-
-      else if (
+      } else if (
         elapsed <
         assignedMs +
           arrivalMs +
@@ -1577,13 +1720,7 @@ function BookRide() {
 
         location =
           pickupCoordinates;
-      }
-
-      /* ======================================================
-         RIDE STARTED
-      ====================================================== */
-
-      else if (
+      } else if (
         elapsed <
         totalMs
       ) {
@@ -1608,13 +1745,7 @@ function BookRide() {
               )
             )
           );
-      }
-
-      /* ======================================================
-         COMPLETED
-      ====================================================== */
-
-      else {
+      } else {
         stage = 5;
 
         location =
@@ -1965,8 +2096,6 @@ function BookRide() {
 
             <div className="relative">
 
-              {/* BRAND */}
-
               <div className="flex items-center gap-3 mb-6">
 
                 <div className="w-12 h-12 rounded-2xl bg-[#FFBE0B] text-black flex items-center justify-center text-2xl shadow-lg shadow-[#FFBE0B]/20">
@@ -1986,8 +2115,6 @@ function BookRide() {
                 </div>
 
               </div>
-
-              {/* TITLE */}
 
               <div className="max-w-3xl">
 
@@ -2101,8 +2228,6 @@ function BookRide() {
 
                 </div>
 
-                {/* FIND RIDE */}
-
                 <div className="mt-5">
 
                   <button
@@ -2121,8 +2246,6 @@ function BookRide() {
 
                 </div>
 
-                {/* ERROR */}
-
                 {error && (
                   <div className="mt-5 rounded-2xl border border-red-500/20 bg-red-500/10 px-5 py-4 text-red-400 text-sm font-bold">
                     {error}
@@ -2130,8 +2253,6 @@ function BookRide() {
                 )}
 
               </div>
-
-              {/* FEATURES */}
 
               <div className="flex flex-wrap items-center gap-x-7 gap-y-3 mt-6 text-xs text-gray-500 font-bold">
 
@@ -2252,8 +2373,6 @@ function BookRide() {
               </div>
 
             </div>
-
-            {/* RIDE CARDS */}
 
             <div className="grid lg:grid-cols-2 gap-4 mt-8">
 
@@ -2663,9 +2782,7 @@ function BookRide() {
 
                   </div>
 
-                  {/* ==================================================
-                      CONFIRM BUTTON
-                  ================================================== */}
+                  {/* CONFIRM BUTTON */}
 
                   <button
                     type="button"
@@ -2686,7 +2803,7 @@ function BookRide() {
                     }`}
                   >
                     {bookingProcessing
-                      ? "Processing Payment..."
+                      ? "Processing..."
                       : bookingConfirmed
                       ? "Ride Booked ✓"
                       : paymentMethod ===
@@ -2695,13 +2812,9 @@ function BookRide() {
                       : "Confirm & Book Ride →"}
                   </button>
 
-                  {paymentMethod ===
-                    "wallet" && (
-                    <p className="text-center text-xs text-gray-500 mt-3">
-                      Your wallet is charged only after
-                      the Firestore booking transaction succeeds.
-                    </p>
-                  )}
+                  <p className="text-center text-xs text-gray-500 mt-3">
+                    A 4-digit demo OTP verification is required before your ride is booked.
+                  </p>
 
                 </div>
 
@@ -2773,8 +2886,6 @@ function BookRide() {
                 </div>
 
               </div>
-
-              {/* DETAILS */}
 
               <div className="mt-7 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
 
@@ -3483,6 +3594,186 @@ function BookRide() {
 
           </div>
         )}
+
+      {/* ======================================================
+          4-DIGIT DEMO OTP MODAL
+
+          IMPORTANT:
+          This is only a demo/testing OTP.
+          No SMS is sent.
+          No Firebase Phone Authentication is used.
+      ====================================================== */}
+
+      {showOtpModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+
+          <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-[#111827] shadow-2xl p-6 md:p-8">
+
+            {/* HEADER */}
+
+            <div className="flex items-start justify-between gap-4">
+
+              <div>
+
+                <p className="text-[#FFBE0B] text-xs font-black uppercase tracking-[0.2em]">
+                  Ride Verification
+                </p>
+
+                <h2 className="text-2xl md:text-3xl font-black mt-2">
+                  Verify Your Ride 📱
+                </h2>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={
+                  closeOtpModal
+                }
+                disabled={
+                  otpVerifying
+                }
+                className="w-10 h-10 shrink-0 rounded-full bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition disabled:opacity-40"
+              >
+                ✕
+              </button>
+
+            </div>
+
+            <p className="text-gray-400 text-sm mt-4 leading-6">
+              Enter the 4-digit verification code
+              to confirm your RYDO ride.
+            </p>
+
+            {/* DEMO NOTICE */}
+
+            <div className="mt-6 rounded-2xl border border-[#FFBE0B]/20 bg-[#FFBE0B]/10 p-5">
+
+              <div className="flex items-center gap-3">
+
+                <div className="w-10 h-10 rounded-xl bg-[#FFBE0B]/15 flex items-center justify-center text-xl">
+                  🧪
+                </div>
+
+                <div>
+
+                  <p className="text-xs text-gray-400 uppercase tracking-widest font-black">
+                    Demo OTP
+                  </p>
+
+                  <p className="text-2xl font-black tracking-[0.35em] text-[#FFBE0B] mt-1">
+                    {DEMO_OTP}
+                  </p>
+
+                </div>
+
+              </div>
+
+              <p className="text-xs text-gray-500 mt-3">
+                Demo mode — no SMS is sent and no
+                Firebase Phone Authentication is used.
+              </p>
+
+            </div>
+
+            {/* OTP INPUT */}
+
+            <div className="mt-6">
+
+              <label className="text-xs text-gray-500 uppercase tracking-widest font-black">
+                Enter OTP
+              </label>
+
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={4}
+                autoFocus
+                value={otp}
+                onChange={(e) => {
+                  setOtp(
+                    e.target.value
+                      .replace(
+                        /\D/g,
+                        ""
+                      )
+                      .slice(
+                        0,
+                        4
+                      )
+                  );
+
+                  setOtpError("");
+                }}
+                onKeyDown={(e) => {
+                  if (
+                    e.key ===
+                    "Enter"
+                  ) {
+                    verifyDemoOtp();
+                  }
+                }}
+                placeholder="Enter 4-digit OTP"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-5 text-center text-2xl font-black tracking-[0.45em] text-white outline-none focus:border-[#FFBE0B] focus:ring-2 focus:ring-[#FFBE0B]/10"
+              />
+
+            </div>
+
+            {/* OTP ERROR */}
+
+            {otpError && (
+              <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-400">
+                {otpError}
+              </div>
+            )}
+
+            {/* VERIFY BUTTON */}
+
+            <button
+              type="button"
+              onClick={
+                verifyDemoOtp
+              }
+              disabled={
+                otpVerifying ||
+                otp.length !== 4
+              }
+              className={`mt-6 w-full rounded-2xl py-4 font-black text-lg transition ${
+                otpVerifying ||
+                otp.length !== 4
+                  ? "bg-gray-600 text-gray-300 cursor-not-allowed"
+                  : "bg-[#FFBE0B] text-black hover:scale-[1.01] hover:shadow-xl hover:shadow-[#FFBE0B]/20"
+              }`}
+            >
+              {otpVerifying
+                ? "Verifying OTP..."
+                : "Verify OTP →"}
+            </button>
+
+            {/* CANCEL */}
+
+            <button
+              type="button"
+              onClick={
+                closeOtpModal
+              }
+              disabled={
+                otpVerifying
+              }
+              className="mt-3 w-full rounded-2xl border border-white/10 bg-white/5 py-4 font-black text-gray-400 hover:text-white hover:bg-white/10 transition disabled:opacity-40"
+            >
+              Cancel
+            </button>
+
+            <p className="text-center text-[11px] text-gray-600 mt-5">
+              RYDO demo verification • No SMS charges
+            </p>
+
+          </div>
+
+        </div>
+      )}
 
     </div>
   );
