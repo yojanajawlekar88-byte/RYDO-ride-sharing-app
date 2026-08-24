@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function Features() {
-  const [expandedFeature, setExpandedFeature] = useState(null);
+  const navigate = useNavigate();
 
   const features = [
     {
@@ -10,13 +10,7 @@ function Features() {
       description:
         "Book your ride within seconds with our simple and powerful booking system.",
       details:
-        "Enter your pickup and destination, choose the ride that suits you, check the estimated fare and confirm your booking. RYDO is designed to make the entire booking process quick and simple.",
-      points: [
-        "Quick pickup and destination selection",
-        "Multiple ride options",
-        "Instant fare calculation",
-        "Simple booking process",
-      ],
+        "Enter your pickup and destination, choose your preferred ride, check the fare and confirm your booking in just a few steps.",
     },
     {
       icon: "🛡️",
@@ -24,13 +18,7 @@ function Features() {
       description:
         "Ride confidently with verified drivers and reliable safety features.",
       details:
-        "Your safety is an important part of the RYDO experience. Ride information, driver details and journey status can be viewed through the booking system so you can stay informed throughout your trip.",
-      points: [
-        "Driver information available after booking",
-        "Ride status tracking",
-        "Pickup and destination verification",
-        "Journey information available in real time",
-      ],
+        "RYDO is designed to make every journey comfortable and secure, with driver information and ride status available throughout your trip.",
     },
     {
       icon: "💰",
@@ -38,13 +26,7 @@ function Features() {
       description:
         "Enjoy transparent fares with no hidden charges or surprises.",
       details:
-        "RYDO calculates your estimated fare based on the selected ride type and journey distance. You can review the fare before confirming your ride, helping you understand the cost before you travel.",
-      points: [
-        "Distance-based fare calculation",
-        "Multiple price-friendly ride types",
-        "Fare shown before booking",
-        "Wallet payment support",
-      ],
+        "See your estimated fare before confirming your ride. Choose from multiple ride categories according to your budget and comfort.",
     },
     {
       icon: "📍",
@@ -52,13 +34,7 @@ function Features() {
       description:
         "Track your driver in real time and know exactly when your ride will arrive.",
       details:
-        "After your ride is booked, the map provides a live view of your journey. You can see the driver's movement, pickup location, destination and current ride status.",
-      points: [
-        "Live driver movement",
-        "Pickup and destination markers",
-        "Driver arrival status",
-        "Estimated journey progress",
-      ],
+        "After booking, follow your driver's journey on the live map and see the ride progress from driver assignment to arrival.",
     },
     {
       icon: "🚗",
@@ -66,13 +42,7 @@ function Features() {
       description:
         "Choose from Mini, Sedan, SUV and premium ride options.",
       details:
-        "Choose the vehicle that matches your journey and budget. RYDO provides different ride categories so you can select an option that works best for your trip.",
-      points: [
-        "Mini for everyday travel",
-        "Sedan for comfortable journeys",
-        "SUV for larger groups or extra space",
-        "Bike option for quick travel",
-      ],
+        "Select the ride that suits your journey. Whether you need an affordable city ride or extra space for your family, RYDO gives you options.",
     },
     {
       icon: "📞",
@@ -80,27 +50,24 @@ function Features() {
       description:
         "Our support system is available whenever you need help with your ride.",
       details:
-        "RYDO keeps important ride communication close to your booking experience. Depending on your current ride status, you can access driver communication options and manage your journey.",
-      points: [
-        "Driver communication",
-        "Call option during active rides",
-        "Chat support during the journey",
-        "Ride cancellation controls",
-      ],
+        "Get help with your booking, driver, payment or ride status whenever you need assistance.",
     },
   ];
 
-  const toggleFeature = (index) => {
-    setExpandedFeature(
-      expandedFeature === index ? null : index
+  const handleLearnMore = (feature) => {
+    alert(
+      `${feature.title}\n\n${feature.details}`
     );
+  };
+
+  const handleBookRide = () => {
+    navigate("/bookride");
   };
 
   return (
     <section className="relative bg-black text-white py-24 px-6 overflow-hidden">
 
-      {/* ================= BACKGROUND GLOW ================= */}
-
+      {/* Background glow */}
       <div className="absolute top-20 left-0 w-72 h-72 bg-[#FFBE0B]/10 rounded-full blur-3xl" />
 
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#FFBE0B]/10 rounded-full blur-3xl" />
@@ -175,108 +142,44 @@ function Features() {
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
 
-          {features.map((feature, index) => {
+          {features.map((feature, index) => (
 
-            const isExpanded = expandedFeature === index;
+            <div
+              key={index}
+              className="group bg-[#1E293B] border border-gray-800 rounded-3xl p-8 hover:border-[#FFBE0B] hover:-translate-y-2 transition-all duration-300 shadow-xl"
+            >
 
-            return (
-              <div
-                key={index}
-                className={`group bg-[#1E293B] border rounded-3xl p-8 transition-all duration-300 shadow-xl ${
-                  isExpanded
-                    ? "border-[#FFBE0B] -translate-y-2"
-                    : "border-gray-800 hover:border-[#FFBE0B] hover:-translate-y-2"
-                }`}
-              >
+              {/* Icon */}
 
-                {/* ================= ICON ================= */}
-
-                <div
-                  className={`w-16 h-16 rounded-2xl flex items-center justify-center text-4xl transition-all duration-300 ${
-                    isExpanded
-                      ? "bg-[#FFBE0B] scale-110"
-                      : "bg-[#FFBE0B]/10 group-hover:bg-[#FFBE0B] group-hover:scale-110"
-                  }`}
-                >
-                  {feature.icon}
-                </div>
-
-                {/* ================= TITLE ================= */}
-
-                <h3 className="mt-7 text-2xl font-bold text-white group-hover:text-[#FFBE0B] transition">
-                  {feature.title}
-                </h3>
-
-                {/* ================= DESCRIPTION ================= */}
-
-                <p className="mt-4 text-gray-400 leading-relaxed">
-                  {feature.description}
-                </p>
-
-                {/* ================= LEARN MORE BUTTON ================= */}
-
-                <button
-                  type="button"
-                  onClick={() => toggleFeature(index)}
-                  className="mt-6 inline-flex items-center gap-2 text-[#FFBE0B] font-bold hover:text-white transition-all duration-200"
-                >
-                  {isExpanded ? "Show less" : "Learn more"}
-
-                  <span
-                    className={`transition-transform duration-300 ${
-                      isExpanded ? "rotate-180" : ""
-                    }`}
-                  >
-                    ↓
-                  </span>
-                </button>
-
-                {/* ================= EXPANDED INFORMATION ================= */}
-
-                <div
-                  className={`grid transition-all duration-300 ease-in-out ${
-                    isExpanded
-                      ? "grid-rows-[1fr] opacity-100 mt-6"
-                      : "grid-rows-[0fr] opacity-0"
-                  }`}
-                >
-                  <div className="overflow-hidden">
-
-                    <div className="border-t border-white/10 pt-5">
-
-                      <p className="text-sm text-gray-300 leading-relaxed">
-                        {feature.details}
-                      </p>
-
-                      <div className="mt-5 space-y-3">
-
-                        {feature.points.map((point, pointIndex) => (
-                          <div
-                            key={pointIndex}
-                            className="flex items-start gap-3"
-                          >
-
-                            <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FFBE0B]/15 text-[#FFBE0B] text-xs font-black">
-                              ✓
-                            </span>
-
-                            <p className="text-sm text-gray-400">
-                              {point}
-                            </p>
-
-                          </div>
-                        ))}
-
-                      </div>
-
-                    </div>
-
-                  </div>
-                </div>
-
+              <div className="w-16 h-16 rounded-2xl bg-[#FFBE0B]/10 flex items-center justify-center text-4xl group-hover:bg-[#FFBE0B] group-hover:scale-110 transition-all duration-300">
+                {feature.icon}
               </div>
-            );
-          })}
+
+              {/* Title */}
+
+              <h3 className="mt-7 text-2xl font-bold text-white group-hover:text-[#FFBE0B] transition">
+                {feature.title}
+              </h3>
+
+              {/* Description */}
+
+              <p className="mt-4 text-gray-400 leading-relaxed">
+                {feature.description}
+              </p>
+
+              {/* Learn More */}
+
+              <button
+                type="button"
+                onClick={() => handleLearnMore(feature)}
+                className="mt-6 text-[#FFBE0B] font-semibold hover:text-white transition cursor-pointer"
+              >
+                Learn more →
+              </button>
+
+            </div>
+
+          ))}
 
         </div>
 
@@ -300,12 +203,13 @@ function Features() {
 
           </div>
 
-          <a
-            href="/bookride"
+          <button
+            type="button"
+            onClick={handleBookRide}
             className="bg-black text-[#FFBE0B] px-8 py-4 rounded-full font-bold text-lg hover:scale-105 transition"
           >
             Book a Ride →
-          </a>
+          </button>
 
         </div>
 
