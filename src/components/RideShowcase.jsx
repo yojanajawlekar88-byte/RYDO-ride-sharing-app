@@ -1,4 +1,8 @@
+import { useNavigate } from "react-router-dom";
+
 function RideShowcase() {
+  const navigate = useNavigate();
+
   const rides = [
     {
       name: "RYDO Mini",
@@ -32,6 +36,10 @@ function RideShowcase() {
     },
   ];
 
+  const handleBookRide = () => {
+    navigate("/bookride");
+  };
+
   return (
     <section className="bg-[#0B1020] text-white py-24 px-6">
 
@@ -48,7 +56,7 @@ function RideShowcase() {
 
         <p className="text-gray-400 max-w-2xl mx-auto mt-5 text-lg">
           From quick city trips to comfortable family journeys,
-          choose the Rydo ride that fits your needs.
+          choose the RYDO ride that fits your needs.
         </p>
 
       </div>
@@ -75,8 +83,12 @@ function RideShowcase() {
                 group-hover:scale-110 transition duration-700"
               />
 
+              {/* Image Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+
               {/* Rating */}
-              <div className="absolute top-4 right-4
+              <div
+                className="absolute top-4 right-4
                 bg-black/70 backdrop-blur-md
                 px-4 py-2 rounded-full
                 text-white font-semibold"
@@ -98,12 +110,18 @@ function RideShowcase() {
               </p>
 
               {/* Features */}
-              <div className="flex justify-between mt-6
-                text-gray-300 text-sm">
+              <div
+                className="flex justify-between mt-6
+                text-gray-300 text-sm"
+              >
 
-                <span>👤 {ride.passengers} Seats</span>
+                <span>
+                  👤 {ride.passengers} Seats
+                </span>
 
-                <span>🧳 {ride.luggage} Bags</span>
+                <span>
+                  🧳 {ride.luggage} Bags
+                </span>
 
               </div>
 
@@ -120,14 +138,27 @@ function RideShowcase() {
                   </p>
                 </div>
 
+                {/* BOOK NOW */}
                 <button
-                  className="bg-[#FFBE0B] text-black
-                  px-5 py-3 rounded-full
-                  font-bold
-                  hover:scale-105
-                  transition"
+                  type="button"
+                  onClick={handleBookRide}
+                  className="
+                    bg-[#FFBE0B]
+                    text-black
+                    px-5
+                    py-3
+                    rounded-full
+                    font-bold
+                    hover:bg-white
+                    hover:scale-105
+                    active:scale-95
+                    transition-all
+                    duration-200
+                    cursor-pointer
+                    shadow-lg
+                  "
                 >
-                  Book Now
+                  Book Now →
                 </button>
 
               </div>
