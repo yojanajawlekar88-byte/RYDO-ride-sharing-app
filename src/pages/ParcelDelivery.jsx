@@ -47,6 +47,12 @@ function ParcelDelivery() {
   const [parcelDetails, setParcelDetails] = useState("");
 
   // =========================================================
+  // DELIVERY OTP
+  // =========================================================
+
+  const [deliveryOtp, setDeliveryOtp] = useState("");
+
+  // =========================================================
   // DELIVERY
   // =========================================================
 
@@ -77,6 +83,16 @@ function ParcelDelivery() {
 
   const [error, setError] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
+
+  // =========================================================
+  // GENERATE 4-DIGIT DELIVERY OTP
+  // =========================================================
+
+  const generateDeliveryOtp = () => {
+    return String(
+      Math.floor(1000 + Math.random() * 9000)
+    );
+  };
 
   // =========================================================
   // DELIVERY OPTIONS
@@ -296,7 +312,7 @@ function ParcelDelivery() {
   };
 
   // =========================================================
-  // RESET
+  // RESET DELIVERY OPTIONS
   // =========================================================
 
   const resetDeliveryOptions = () => {
@@ -307,6 +323,10 @@ function ParcelDelivery() {
     setDistanceKm(0);
     setRouteTimeMinutes(0);
     setRouteGeometry(null);
+
+    // Generate a new OTP only when a delivery vehicle
+    // is selected. Clear the old one here.
+    setDeliveryOtp("");
   };
 
   // =========================================================
@@ -336,6 +356,9 @@ function ParcelDelivery() {
     setPaymentProcessing(false);
 
     setPaymentMethod("wallet");
+
+    // Reset OTP for new delivery
+    setDeliveryOtp("");
 
     setError("");
     setIsConfirming(false);
@@ -482,6 +505,10 @@ function ParcelDelivery() {
     setSelectedDelivery(null);
     setPaymentComplete(false);
     setDeliveryOptions([]);
+
+    // Clear previous OTP because a new route/search
+    // is being started.
+    setDeliveryOtp("");
 
     if (!pickup) {
       setError(
@@ -666,6 +693,13 @@ function ParcelDelivery() {
         "Please select a delivery option first."
       );
       return;
+    }
+
+    // Safety check:
+    // If for some reason an OTP does not exist yet,
+    // generate one before payment is completed.
+    if (!deliveryOtp) {
+      setDeliveryOtp(generateDeliveryOtp());
     }
 
     setPaymentProcessing(true);
@@ -902,6 +936,23 @@ function ParcelDelivery() {
         );
       }
 
+      // =====================================================
+      // OTP SAFETY
+      // =====================================================
+
+      // Normally the OTP was already generated when the
+      // customer selected the delivery vehicle.
+      // This is a final safety fallback.
+      const finalDeliveryOtp =
+        deliveryOtp || generateDeliveryOtp();
+
+      // Keep the UI state synchronized as well.
+      setDeliveryOtp(finalDeliveryOtp);
+
+      // =====================================================
+      // PARCEL ID
+      // =====================================================
+
       const parcelId =
         "RYDO-PCL-" +
         Math.random()
@@ -930,15 +981,23 @@ function ParcelDelivery() {
           }
         );
 
+      // =====================================================
+      // PICKUP DATA
+      // =====================================================
+
       const pickupData = {
         address:
           getLocationAddress(pickup),
+
         name:
           pickup?.name ||
           pickup?.properties?.name ||
           "",
+
         lat: pickupLat,
+
         lng: pickupLng,
+
         placeId:
           pickup?.placeId ||
           pickup?.place_id ||
@@ -946,21 +1005,33 @@ function ParcelDelivery() {
           "",
       };
 
+      // =====================================================
+      // DESTINATION DATA
+      // =====================================================
+
       const destinationData = {
         address:
           getLocationAddress(destination),
+
         name:
           destination?.name ||
           destination?.properties?.name ||
           "",
+
         lat: destinationLat,
+
         lng: destinationLng,
+
         placeId:
           destination?.placeId ||
           destination?.place_id ||
           destination?.properties?.place_id ||
           "",
       };
+
+      // =====================================================
+      // PAYMENT STATUS
+      // =====================================================
 
       const paymentStatus =
         paymentMethod === "cash"
@@ -970,10 +1041,39 @@ function ParcelDelivery() {
       const createdTimestamp =
         new Date().toISOString();
 
+      // =====================================================
+      // PARCEL DATA
+      // =====================================================
+
       const parcelData = {
+        // ===================================================
+        // USER
+        // ===================================================
+
         userId: currentUser.uid,
 
+        // ===================================================
+        // PARCEL ID
+        // ===================================================
+
         parcelId,
+
+        // ===================================================
+        // DELIVERY OTP
+        // ===================================================
+
+        // Main OTP field
+        deliveryOtp: finalDeliveryOtp,
+
+        // Short alias for easy access from driver/status page
+        otp: finalDeliveryOtp,
+
+        // OTP status
+        otpVerified: false,
+
+        // ===================================================
+        // DRIVER
+        // ===================================================
 
         driverId:
           selectedDelivery.driverId,
@@ -987,11 +1087,19 @@ function ParcelDelivery() {
         vehicle:
           selectedDelivery.vehicle,
 
+        // ===================================================
+        // DELIVERY TYPE
+        // ===================================================
+
         deliveryOptionId:
           selectedDelivery.id,
 
         deliveryType:
           selectedDelivery.name,
+
+        // ===================================================
+        // PICKUP
+        // ===================================================
 
         pickup: pickupData,
 
@@ -1004,12 +1112,19 @@ function ParcelDelivery() {
           destinationData.address,
 
         pickupLat,
+
         pickupLng,
 
         destinationLat,
+
         destinationLng,
 
-        distanceKm: finalDistanceKm,
+        // ===================================================
+        // ROUTE
+        // ===================================================
+
+        distanceKm:
+          finalDistanceKm,
 
         routeTimeMinutes:
           finalRouteTimeMinutes,
@@ -1019,24 +1134,44 @@ function ParcelDelivery() {
             ? JSON.stringify(routeGeometry)
             : null,
 
+        // ===================================================
+        // SENDER
+        // ===================================================
+
         senderName:
           senderName.trim(),
 
         senderPhone,
+
+        // ===================================================
+        // RECEIVER
+        // ===================================================
 
         receiverName:
           receiverName.trim(),
 
         receiverPhone,
 
+        // ===================================================
+        // PARCEL
+        // ===================================================
+
         parcelDetails:
           parcelDetails.trim(),
+
+        // ===================================================
+        // DRIVER ARRIVAL
+        // ===================================================
 
         driverArrival:
           selectedDelivery.arrival,
 
         arrival:
           selectedDelivery.arrival,
+
+        // ===================================================
+        // FARE
+        // ===================================================
 
         fare:
           selectedDelivery.fare,
@@ -1050,6 +1185,10 @@ function ParcelDelivery() {
         perKm:
           selectedDelivery.perKm,
 
+        // ===================================================
+        // PAYMENT
+        // ===================================================
+
         paymentStatus,
 
         paymentMethod,
@@ -1058,6 +1197,10 @@ function ParcelDelivery() {
           finalFare,
 
         paymentComplete: true,
+
+        // ===================================================
+        // DELIVERY STATUS
+        // ===================================================
 
         status:
           "Driver Assigned",
@@ -1068,26 +1211,43 @@ function ParcelDelivery() {
 
         driverOnline: false,
 
+        // ===================================================
+        // STATUS HISTORY
+        // ===================================================
+
         statusHistory: [
           {
             status: "Order Placed",
+
             message:
               "Your parcel delivery request has been placed.",
+
             timestamp:
               createdTimestamp,
           },
+
           {
             status: "Driver Assigned",
+
             message:
               `${selectedDelivery.driver} has been assigned to your parcel.`,
+
             timestamp:
               createdTimestamp,
           },
         ],
 
+        // ===================================================
+        // DATE / TIME
+        // ===================================================
+
         deliveryDate,
 
         deliveryTime,
+
+        // ===================================================
+        // FIRESTORE TIMESTAMPS
+        // ===================================================
 
         createdAt:
           serverTimestamp(),
@@ -1095,6 +1255,10 @@ function ParcelDelivery() {
         updatedAt:
           serverTimestamp(),
       };
+
+      // =====================================================
+      // CREATE FIRESTORE DOCUMENT
+      // =====================================================
 
       const parcelCollection =
         collection(
@@ -1106,6 +1270,10 @@ function ParcelDelivery() {
         parcelCollection,
         parcelData
       );
+
+      // =====================================================
+      // CONFIRMATION ALERT
+      // =====================================================
 
       alert(
         `Parcel delivery confirmed! 📦\n\n` +
@@ -1120,8 +1288,14 @@ function ParcelDelivery() {
               ? "RYDO Wallet"
               : paymentMethod.toUpperCase()
           }\n\n` +
-          `Status: Driver Assigned`
+          `Status: Driver Assigned\n` +
+          `Delivery OTP: ${finalDeliveryOtp}\n\n` +
+          `Give this 4-digit OTP to the driver when your parcel is delivered.`
       );
+
+      // =====================================================
+      // NAVIGATE TO STATUS PAGE
+      // =====================================================
 
       navigate(
         `/parcel-status/${docRef.id}`
@@ -2073,7 +2247,17 @@ function ParcelDelivery() {
                       setSelectedDelivery(
                         delivery
                       );
+
                       setPaymentComplete(false);
+
+                      // =========================================
+                      // GENERATE NEW 4-DIGIT OTP
+                      // =========================================
+
+                      setDeliveryOtp(
+                        generateDeliveryOtp()
+                      );
+
                       setError("");
                     }}
                     className={`group relative text-left rounded-[2rem] border p-6 transition-all duration-300 ${
@@ -2684,6 +2868,61 @@ function ParcelDelivery() {
                       </div>
 
                     </div>
+
+                    {/* =================================================
+                        DELIVERY OTP
+                    ================================================= */}
+
+                    <div className="mt-5 rounded-[1.75rem] border border-[#FFBE0B]/30 bg-[#FFBE0B]/[0.08] p-5">
+
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+
+                        <div>
+
+                          <p className="text-[9px] text-[#FFBE0B] uppercase tracking-[0.2em] font-black">
+                            Delivery OTP
+                          </p>
+
+                          <h4 className="text-xl font-black mt-1">
+                            Give this code to the driver
+                          </h4>
+
+                          <p className="text-sm text-gray-500 mt-1">
+                            The driver should enter this 4-digit
+                            code when handing over your parcel.
+                          </p>
+
+                        </div>
+
+                        <div className="flex items-center gap-2">
+
+                          {deliveryOtp
+                            .split("")
+                            .map((digit, index) => (
+                              <div
+                                key={index}
+                                className="w-12 h-14 sm:w-14 sm:h-16 rounded-2xl border border-[#FFBE0B]/30 bg-black/30 flex items-center justify-center text-2xl sm:text-3xl font-black text-[#FFBE0B]"
+                              >
+                                {digit}
+                              </div>
+                            ))}
+
+                        </div>
+
+                      </div>
+
+                      <div className="mt-4 rounded-xl border border-white/5 bg-black/20 px-4 py-3">
+
+                        <p className="text-xs text-gray-400">
+                          🔐 Keep this OTP private until the parcel
+                          is delivered.
+                        </p>
+
+                      </div>
+
+                    </div>
+
+                    {/* DRIVER CONTACT BUTTONS */}
 
                     <div className="grid sm:grid-cols-2 gap-3 mt-5">
 
