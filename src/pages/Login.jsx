@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import {
-  signInWithEmailAndPassword,
   sendPasswordResetEmail,
+  signInWithEmailAndPassword,
 } from "firebase/auth";
 
 import { auth } from "../firebase";
@@ -20,9 +20,9 @@ function Login() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // ==========================================
+  // ============================================================
   // LOGIN
-  // ==========================================
+  // ============================================================
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -30,10 +30,15 @@ function Login() {
     setError("");
     setSuccess("");
 
-    const cleanEmail = email.trim();
+    const cleanEmail = email.trim().toLowerCase();
 
-    if (!cleanEmail || !password) {
-      setError("Please enter your email and password.");
+    if (!cleanEmail) {
+      setError("Please enter your email address.");
+      return;
+    }
+
+    if (!password) {
+      setError("Please enter your password.");
       return;
     }
 
@@ -48,15 +53,15 @@ function Login() {
 
       setSuccess("Login successful! Redirecting...");
 
-      // Small delay so user can see success message
+      // Small delay so user sees success message
       setTimeout(() => {
         navigate("/profile", { replace: true });
       }, 500);
 
-    } catch (err) {
-      console.error("LOGIN ERROR:", err);
+    } catch (error) {
+      console.error("LOGIN ERROR:", error);
 
-      switch (err.code) {
+      switch (error.code) {
         case "auth/invalid-credential":
           setError(
             "Incorrect email or password. Please check your credentials and try again."
@@ -65,13 +70,13 @@ function Login() {
 
         case "auth/user-not-found":
           setError(
-            "No RYDO account exists with this email address."
+            "No account was found with this email address."
           );
           break;
 
         case "auth/wrong-password":
           setError(
-            "Incorrect password. Please try again or reset your password."
+            "Incorrect password. Please try again."
           );
           break;
 
@@ -89,7 +94,7 @@ function Login() {
 
         case "auth/too-many-requests":
           setError(
-            "Too many unsuccessful login attempts. Please wait a while and try again."
+            "Too many unsuccessful attempts. Please wait a moment and try again."
           );
           break;
 
@@ -99,32 +104,25 @@ function Login() {
           );
           break;
 
-        case "auth/operation-not-allowed":
-          setError(
-            "Email/password login is not enabled in Firebase Authentication."
-          );
-          break;
-
         default:
           setError(
-            `Login failed: ${err.message || "Please try again."}`
+            error.message || "Login failed. Please try again."
           );
       }
-
     } finally {
       setLoading(false);
     }
   };
 
-  // ==========================================
+  // ============================================================
   // FORGOT PASSWORD
-  // ==========================================
+  // ============================================================
 
   const handleForgotPassword = async () => {
     setError("");
     setSuccess("");
 
-    const cleanEmail = email.trim();
+    const cleanEmail = email.trim().toLowerCase();
 
     if (!cleanEmail) {
       setError(
@@ -142,37 +140,46 @@ function Login() {
       );
 
       setSuccess(
-        "Password reset email sent. Please check your inbox."
+        "Password reset email sent! Check your inbox and spam folder."
       );
 
-    } catch (err) {
-      console.error("PASSWORD RESET ERROR:", err);
+    } catch (error) {
+      console.error(
+        "PASSWORD RESET ERROR:",
+        error
+      );
 
-      switch (err.code) {
-        case "auth/user-not-found":
-          setError(
-            "No RYDO account exists with this email address."
-          );
-          break;
-
+      switch (error.code) {
         case "auth/invalid-email":
           setError(
             "Please enter a valid email address."
           );
           break;
 
+        case "auth/user-not-found":
+          setError(
+            "No account was found with this email address."
+          );
+          break;
+
         case "auth/too-many-requests":
           setError(
-            "Too many requests. Please wait and try again later."
+            "Too many reset requests. Please wait and try again."
+          );
+          break;
+
+        case "auth/network-request-failed":
+          setError(
+            "Network error. Please check your internet connection."
           );
           break;
 
         default:
           setError(
-            "Unable to send password reset email. Please try again."
+            error.message ||
+              "Unable to send password reset email."
           );
       }
-
     } finally {
       setResetLoading(false);
     }
@@ -183,9 +190,9 @@ function Login() {
 
       <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-12 items-center">
 
-        {/* ==========================================
+        {/* =====================================================
             LEFT SIDE
-        ========================================== */}
+        ====================================================== */}
 
         <div className="hidden lg:block">
 
@@ -204,8 +211,9 @@ function Login() {
 
           <p className="text-gray-400 text-lg mt-6 max-w-lg leading-relaxed">
             Your next journey is just one tap away.
-            Login to book rides, track drivers, manage
-            your wallet and view your ride history.
+            Login to book rides, track drivers,
+            manage your wallet and view your ride
+            history.
           </p>
 
           <div className="grid grid-cols-2 gap-4 mt-10">
@@ -270,9 +278,9 @@ function Login() {
 
         </div>
 
-        {/* ==========================================
+        {/* =====================================================
             LOGIN CARD
-        ========================================== */}
+        ====================================================== */}
 
         <div className="w-full max-w-md mx-auto">
 
@@ -284,7 +292,7 @@ function Login() {
 
               <Link
                 to="/"
-                className="text-4xl font-black text-[#FFBE0B]"
+                className="text-4xl font-black text-[#FFBE0B] hover:opacity-90 transition"
               >
                 RYDO
               </Link>
@@ -299,23 +307,35 @@ function Login() {
 
             </div>
 
-            {/* ERROR */}
+            {/* =================================================
+                ERROR
+            ================================================== */}
 
             {error && (
               <div className="mt-6 bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl p-4 text-sm leading-relaxed">
-                ⚠️ {error}
+                <span className="mr-2">
+                  ⚠️
+                </span>
+                {error}
               </div>
             )}
 
-            {/* SUCCESS */}
+            {/* =================================================
+                SUCCESS
+            ================================================== */}
 
             {success && (
               <div className="mt-6 bg-green-500/10 border border-green-500/30 text-green-400 rounded-xl p-4 text-sm leading-relaxed">
-                ✅ {success}
+                <span className="mr-2">
+                  ✅
+                </span>
+                {success}
               </div>
             )}
 
-            {/* FORM */}
+            {/* =================================================
+                LOGIN FORM
+            ================================================== */}
 
             <form
               onSubmit={handleLogin}
@@ -332,15 +352,15 @@ function Login() {
 
                 <input
                   type="email"
+                  autoComplete="email"
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
                     setError("");
-                    setSuccess("");
                   }}
-                  autoComplete="email"
-                  className="w-full bg-[#0B1020] border border-white/10 rounded-xl px-4 py-4 outline-none focus:border-[#FFBE0B] transition text-white"
+                  disabled={loading}
+                  className="w-full bg-[#0B1020] border border-white/10 rounded-xl px-4 py-4 outline-none focus:border-[#FFBE0B] transition disabled:opacity-60"
                 />
 
               </div>
@@ -358,8 +378,8 @@ function Login() {
                   <button
                     type="button"
                     onClick={handleForgotPassword}
-                    disabled={resetLoading}
-                    className="text-[#FFBE0B] text-sm hover:underline disabled:opacity-50"
+                    disabled={resetLoading || loading}
+                    className="text-[#FFBE0B] text-sm font-semibold hover:underline disabled:opacity-50"
                   >
                     {resetLoading
                       ? "Sending..."
@@ -370,15 +390,15 @@ function Login() {
 
                 <input
                   type="password"
+                  autoComplete="current-password"
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
                     setError("");
-                    setSuccess("");
                   }}
-                  autoComplete="current-password"
-                  className="w-full bg-[#0B1020] border border-white/10 rounded-xl px-4 py-4 outline-none focus:border-[#FFBE0B] transition text-white"
+                  disabled={loading}
+                  className="w-full bg-[#0B1020] border border-white/10 rounded-xl px-4 py-4 outline-none focus:border-[#FFBE0B] transition disabled:opacity-60"
                 />
 
               </div>
@@ -387,8 +407,8 @@ function Login() {
 
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full bg-[#FFBE0B] text-black py-4 rounded-xl font-black text-lg hover:scale-[1.02] hover:shadow-lg hover:shadow-yellow-500/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading || resetLoading}
+                className="w-full bg-[#FFBE0B] text-black py-4 rounded-xl font-black text-lg hover:scale-[1.02] transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {loading
                   ? "Logging in..."
