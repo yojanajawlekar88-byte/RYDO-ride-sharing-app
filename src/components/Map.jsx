@@ -350,14 +350,13 @@ export default function Map({
     });
 
     /* COLORFUL MAP TILE */
-    L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-      {
-        maxZoom: 20,
-        attribution: '&copy; OpenStreetMap &copy; CARTO',
-        subdomains: "abcd",
-      }
-    ).addTo(map);
+   L.tileLayer(
+  "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors',
+  }
+).addTo(map);
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
